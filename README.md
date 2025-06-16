@@ -14,7 +14,7 @@ A small Houdini Python module that lets you drag and drop files from your operat
 - Renderer choice dialog for material networks (MaterialX or Principled)
 
 ## Installation
-1. Copy `scripts` folder to "C:/Users/<USERNAME>/Documents/houdini20.5/" or whatever Houdini version you are using.
+1. Copy `scripts` folder to "C:/Users/`<USERNAME>`/Documents/houdini20.5/" or whatever Houdini version you are using.
 2. Restart Houdini.
 
 ## Usage
