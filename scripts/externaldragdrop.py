@@ -1,3 +1,7 @@
+"""
+copyright Ahmed Hindy. Please mention the original author if you used any part of this code
+This module handles drag and drops from outside of Houdini.
+"""
 # drag and drop to import file in Houdini
 
 import hou, re, os, sys, platform
