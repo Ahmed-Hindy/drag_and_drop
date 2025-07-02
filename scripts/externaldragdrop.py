@@ -26,7 +26,7 @@ GEO_HANDLERS = {
     **{ext: ("usdimport", "filepath1") for ext in USD_EXTS},
 }
 
-# Mapping for material networks, keyed by subnet type (mtlx/principled)
+# Mapping for material networks, keyed by material type
 MAT_HANDLERS = {
     "mtlx": {ext: ("mtlximage", "file") for ext in IMAGE_EXTS},
     "arnold": {ext: ("arnold::image", "filename") for ext in IMAGE_EXTS},
@@ -58,6 +58,7 @@ def get_full_extension(filename):
     path = Path(filename)
     return ''.join(path.suffixes)
 
+
 def rel_path(fullpath):
     """
     Convert absolute path to relative $HIP path if applicable.
@@ -73,35 +74,35 @@ def rel_path(fullpath):
     try:
         rel = path.relative_to(hip)
         return f"$HIP/{rel.as_posix()}"
-    except Exception:
+    except ValueError:
         return fullpath
+
 
 def detect_material_type(network_node):
     """
-    Detect material subnet type based on existing children or prompt user.
+    Detect material type based on existing children or prompt user.
 
     Args:
-        network_node: Houdini network node whose children indicate subnet type.
+        network_node: Houdini network node whose children indicate material type.
 
     Returns:
-        A string, either 'mtlx' or 'principled'.
-
-    Raises:
-        RuntimeError: If no render engine is selected by the user.
+        A string: 'mtlx', 'arnold', or 'principled', or None if cancelled.
     """
     child_types = [child.type().name() for child in network_node.children()]
     if any("mtlx" in t for t in child_types):
         return "mtlx"
     if any("principled" in t or "texture::2.0" in t for t in child_types):
         return "principled"
+    if any("arnold::" in t for t in child_types):
+        return "arnold"
 
-    options_list = ["mtlx", "arnold", "principled"]
-    choice = hou.ui.selectFromList(choices=options_list, exclusive=True,
+    options = ["mtlx", "arnold", "principled"]
+    choice = hou.ui.selectFromList(choices=options, exclusive=True,
                                    title="Choose Render Engine")
-    print(f"DEBUG: {choice=}")
     if not choice:
         return None
-    return options_list[choice[0]]
+    return options[choice[0]]
+
 
 def create_new_node(network_node, file_path, node_type, parm_name, position, name=None):
     """
@@ -118,13 +119,83 @@ def create_new_node(network_node, file_path, node_type, parm_name, position, nam
     Returns:
         The created Houdini node.
     """
-    if name:
-        node = network_node.createNode(node_type, name)
-    else:
-        node = network_node.createNode(node_type)
+    node = network_node.createNode(node_type, name) if name else network_node.createNode(node_type)
     node.setPosition(position)
     node.setParms({parm_name: file_path})
     return node
+
+# --------------------------------------------------
+# Helper Import Functions
+# --------------------------------------------------
+
+def _import_geo(network_node, file_path, safe_name, file_ext, position):
+    """
+    Handle geometry/SOP imports.
+    """
+    handler = GEO_HANDLERS.get(file_ext)
+    if handler:
+        node_type, parm = handler
+        create_new_node(network_node, file_path, node_type, parm, position, name=safe_name)
+        return True
+    logger.warning("Unsupported geometry extension '%s'", file_ext)
+    return False
+
+
+def _import_material(network_node, file_path, safe_name, file_ext, position):
+    """
+    Handle material network imports.
+    """
+    material = detect_material_type(network_node)
+    if material is None:
+        return True  # canceled by user
+    handlers = MAT_HANDLERS.get(material, {})
+    node_info = handlers.get(file_ext)
+    if node_info:
+        node_type, parm = node_info
+        create_new_node(network_node, file_path, node_type, parm, position, name=safe_name)
+        return True
+    logger.warning("Unsupported material extension '%s' for '%s'", file_ext, material)
+    return False
+
+
+def _import_redshift(network_node, file_path, safe_name, position):
+    """
+    Handle Redshift VOPNET imports.
+    """
+    create_new_node(network_node, file_path, "redshift::TextureSampler", "tex0", position, name=safe_name)
+    return True
+
+
+def _import_chop(network_node, file_path, safe_name, position):
+    """
+    Handle CHOP network imports.
+    """
+    create_new_node(network_node, file_path, "file", "file", position, name=safe_name)
+    return True
+
+
+def _import_arnold(network_node, file_path, safe_name, position):
+    """
+    Handle Arnold material/vopnet imports.
+    """
+    create_new_node(network_node, file_path, "arnold::image", "filename", position, name=safe_name)
+    return True
+
+
+def _import_cop2(network_node, file_path, safe_name, position):
+    """
+    Handle COP2/img network imports.
+    """
+    create_new_node(network_node, file_path, "file", "filename1", position, name=safe_name)
+    return True
+
+
+def _import_lop(network_node, file_path, safe_name, position):
+    """
+    Handle LOP/STAGE network imports.
+    """
+    create_new_node(network_node, file_path, "assetreference", "filepath", position, name=safe_name)
+    return True
 
 # --------------------------------------------------
 # Main Import Logic
@@ -145,67 +216,49 @@ def import_file(network_node, file_path, file_stem, file_ext, cursor_position):
         True if import succeeded, False otherwise.
     """
     safe_name = re.sub(r"\W+", "_", file_stem)
-
     net_type = network_node.type().name()
+
+    # Unwrap nested subnets
     while net_type == "subnet":
         network_node = network_node.parent()
         net_type = network_node.type().name()
 
-    logger.info("Importing '%s' into network '%s'", file_path, net_type)
+    logger.info("Importing '%s' into '%s' network", file_path, net_type)
 
+    # Handle scene loads
     if file_ext == ".hip":
         hou.hipFile.load(file_path)
         return True
 
+    # Auto-create geo container in OBJ context
     if net_type == "obj":
         network_node = network_node.createNode("geo", f"GEO_{safe_name}")
         network_node.setPosition(cursor_position)
         net_type = "geo"
 
-    elif net_type in ("geo", "sopnet"):
-        handler = GEO_HANDLERS.get(file_ext)
-        if handler:
-            node_type, parm = handler
-            create_new_node(network_node, file_path, node_type, parm, cursor_position, name=safe_name)
-            return True
-        logger.warning("Unsupported geometry extension '%s'", file_ext)
-        return False
+    # Dispatch by network type
+    if net_type in ("geo", "sopnet"):
+        return _import_geo(network_node, file_path, safe_name, file_ext, cursor_position)
 
-    elif net_type in ("mat", "matnet", "materialbuilder", "materiallibrary", "assignmaterial"):
-        material_type = detect_material_type(network_node)
-        if not material_type:
-            return True
+    if net_type in ("mat", "matnet", "materialbuilder", "materiallibrary", "assignmaterial"):
+        return _import_material(network_node, file_path, safe_name, file_ext, cursor_position)
 
-        handlers = MAT_HANDLERS.get(material_type, {})
-        node_info = handlers.get(file_ext)
-        if node_info:
-            node_type, parm = node_info
-            create_new_node(network_node, file_path, node_type, parm, cursor_position, name=safe_name)
-            return True
-        logger.warning("Unsupported material extension '%s' for subnet '%s'", file_ext, material_type)
-        return False
+    if net_type == "redshift_vopnet":
+        return _import_redshift(network_node, file_path, safe_name, cursor_position)
 
-    elif net_type == "redshift_vopnet":
-        create_new_node(network_node, file_path, "redshift::TextureSampler", "tex0", cursor_position, name=safe_name)
-        return True
+    if net_type == "chopnet":
+        return _import_chop(network_node, file_path, safe_name, cursor_position)
 
-    elif net_type == "chopnet":
-        create_new_node(network_node, file_path, "file", "file", cursor_position, name=safe_name)
-        return True
+    if net_type in ("arnold_materialbuilder", "arnold_vopnet"):
+        return _import_arnold(network_node, file_path, safe_name, cursor_position)
 
-    elif net_type in ("arnold_materialbuilder", "arnold_vopnet"):
-        create_new_node(network_node, file_path, "arnold::image", "filename", cursor_position, name=safe_name)
-        return True
+    if net_type in ("cop2net", "img"):
+        return _import_cop2(network_node, file_path, safe_name, cursor_position)
 
-    elif net_type in ("cop2net", "img"):
-        create_new_node(network_node, file_path, "file", "filename1", cursor_position, name=safe_name)
-        return True
+    if net_type in ("lopnet", "stage"):
+        return _import_lop(network_node, file_path, safe_name, cursor_position)
 
-    elif net_type in ("lopnet", "stage"):
-        create_new_node(network_node, file_path, "assetreference", "filepath", cursor_position, name=safe_name)
-        return True
-
-    logger.error(f"No handler for network type '{net_type}' and extension '{file_ext}'")
+    logger.error("No handler for network type '%s' and extension '%s'", net_type, file_ext)
     return False
 
 
@@ -223,7 +276,7 @@ def dropAccept(filepaths_list):
     if pane.type().name() != "NetworkEditor":
         return False
 
-    logger.info(f"Dropping filepaths_list {filepaths_list} into pane {pane.type().name()}")
+    logger.info("Dropping %s into %s", filepaths_list, pane.type().name())
 
     for idx, filepath in enumerate(filepaths_list):
         path = Path(filepath)
@@ -233,12 +286,13 @@ def dropAccept(filepaths_list):
         pos = pane.cursorPosition() + hou.Vector2(idx * 3, 0)
 
         try:
-            success = import_file(pane.pwd(), rel, stem, ext, pos)
-            if not success:
-                logger.error(f"Couldn't import {rel}")
+            if not import_file(pane.pwd(), rel, stem, ext, pos):
+                return False
         except hou.Error as e:
-            logger.exception(f"Houdini error importing {rel}: {e}", rel, e)
+            logger.exception("Houdini error importing %s: %s", rel, e)
+            return False
         except Exception as e:
-            logger.exception(f"Unexpected error importing {rel}: {e}", rel, e)
+            logger.exception("Unexpected error importing %s: %s", rel, e)
+            return False
 
     return True

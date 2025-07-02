@@ -4,7 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cc62a867-2521-43d9-8cbd-004c24f3ae92" name="Changes" comment="- changed docstrings to google-style.">
+    <list default="true" id="cc62a867-2521-43d9-8cbd-004c24f3ae92" name="Changes" comment="- added Arnold support to 'hou.ui.selectFromList'&#10;- fixed 'cancel' button not actually cancelling.&#10;- importing usd into solaris now creates 'assetreference' instead of 'reference' nodes.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/scripts/externaldragdrop.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/externaldragdrop.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -58,7 +59,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "feature/fix-invalid-file-types",
+    "git-widget-placeholder": "feature/modularize-import-method",
     "last_opened_file_path": "F:/Users/Ahmed Hindy/Documents/houdiniTools/drag_and_drop",
     "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
@@ -135,7 +136,31 @@
       <option name="project" value="LOCAL" />
       <updated>1751454980900</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="- changed docstrings to google-style.">
+      <option name="closed" value="true" />
+      <created>1751454995390</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1751454995390</updated>
+    </task>
+    <task id="LOCAL-00008" summary="- changed docstrings to google-style.">
+      <option name="closed" value="true" />
+      <created>1751455074825</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1751455074825</updated>
+    </task>
+    <task id="LOCAL-00009" summary="- added Arnold support to 'hou.ui.selectFromList'&#10;- fixed 'cancel' button not actually cancelling.&#10;- importing usd into solaris now creates 'assetreference' instead of 'reference' nodes.">
+      <option name="closed" value="true" />
+      <created>1751457414331</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1751457414331</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -155,6 +180,7 @@
     <MESSAGE value="- added guard clauses for supported file extensions.&#10;- added docstrings" />
     <MESSAGE value="- added declarative mapping instead of if else statements.&#10;- supported extensions are declared in constant lists at the top.&#10;- added logging.&#10;- added Add type hints and docstrings." />
     <MESSAGE value="- changed docstrings to google-style." />
-    <option name="LAST_COMMIT_MESSAGE" value="- changed docstrings to google-style." />
+    <MESSAGE value="- added Arnold support to 'hou.ui.selectFromList'&#10;- fixed 'cancel' button not actually cancelling.&#10;- importing usd into solaris now creates 'assetreference' instead of 'reference' nodes." />
+    <option name="LAST_COMMIT_MESSAGE" value="- added Arnold support to 'hou.ui.selectFromList'&#10;- fixed 'cancel' button not actually cancelling.&#10;- importing usd into solaris now creates 'assetreference' instead of 'reference' nodes." />
   </component>
 </project>
