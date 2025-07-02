@@ -2,7 +2,6 @@
 copyright Ahmed Hindy. Please mention the original author if you used any part of this code
 This module handles drag and drops from outside of Houdini.
 """
-import os
 import logging
 from pathlib import Path
 import re
@@ -22,6 +21,7 @@ USD_EXTS = (".usd", ".usda", ".usdc")
 GEO_HANDLERS = {
     ".abc": ("alembic", "fileName"),
     ".rs": ("redshift_packedProxySOP", "RS_proxy_file"),
+    ".vdb": ("file", "file"),
     ".bgeo.sc": ("file", "file"),
     **{ext: ("usdimport", "filepath1") for ext in USD_EXTS},
 }
@@ -47,16 +47,27 @@ if not logger.hasHandlers():
 
 def get_full_extension(filename):
     """
-    Get full extension (including multi-part) from filename.
+    Get the file extension, treating '.bgeo' specially by including the next suffix.
 
     Args:
         filename: Name or path of the file.
 
     Returns:
-        Combined suffixes as a single string (e.g., '.tar.gz').
+        - '.bgeo.sc' if the last suffix is '.bgeo' and another suffix exists.
+        - Otherwise, just the last suffix (e.g., '.vdb', '.usd').
     """
     path = Path(filename)
-    return ''.join(path.suffixes)
+    suffixes = path.suffixes  # List of all suffixes (e.g., ['.bgeo', '.sc'], ['.0001', '.vdb'])
+
+    if not suffixes:
+        return ""  # No extension
+
+    # Special case: If last suffix is '.bgeo' and there's at least one more suffix
+    if suffixes[-1].lower() == '.bgeo' and len(suffixes) > 1:
+        return suffixes[-1] + suffixes[-2]  # '.bgeo' + '.sc' → '.bgeo.sc'
+
+    # Default case: Return the last suffix
+    return suffixes[-1]
 
 
 def rel_path(fullpath):
@@ -76,6 +87,24 @@ def rel_path(fullpath):
         return f"$HIP/{rel.as_posix()}"
     except ValueError:
         return fullpath
+
+
+def substitute_sequence_path(pathstr):
+    """
+    Detect file sequences and replace frame digits with $F<digits>.
+
+    Args:
+        pathstr: Original file path string.
+
+    Returns:
+        Path string with Houdini frame expression if sequence detected.
+    """
+    match = re.match(r"^(.*?)(\d+)(\.[^.]+)$", pathstr)
+    if match:
+        prefix, digits, ext = match.groups()
+        width = len(digits)
+        return f"{prefix}$F{width}{ext}"
+    return pathstr
 
 
 def detect_material_type(network_node):
@@ -137,7 +166,7 @@ def _import_geo(network_node, file_path, safe_name, file_ext, position):
         node_type, parm = handler
         create_new_node(network_node, file_path, node_type, parm, position, name=safe_name)
         return True
-    logger.warning("Unsupported geometry extension '%s'", file_ext)
+    logger.warning(f"Unsupported geometry extension '{file_ext}'")
     return False
 
 
@@ -154,7 +183,7 @@ def _import_material(network_node, file_path, safe_name, file_ext, position):
         node_type, parm = node_info
         create_new_node(network_node, file_path, node_type, parm, position, name=safe_name)
         return True
-    logger.warning("Unsupported material extension '%s' for '%s'", file_ext, material)
+    logger.warning(f"Unsupported material extension '{file_ext}' for '{material}'")
     return False
 
 
@@ -190,10 +219,22 @@ def _import_cop2(network_node, file_path, safe_name, position):
     return True
 
 
-def _import_lop(network_node, file_path, safe_name, position):
+def _import_lop(network_node, file_path, safe_name, file_ext, position):
     """
-    Handle LOP/STAGE network imports.
+    Handle LOP/STAGE network imports, including FBX, VDB, and default asset references.
     """
+    # FBX: wrap in SOP Create with embedded File SOP
+    if file_ext.lower() == ".fbx":
+        sopcreate_node = network_node.createNode("sopcreate", node_name=f"SOP_{safe_name}")
+        sopcreate_node.setPosition(position)
+        file_sop = sopcreate_node.node("sopnet/create").createNode("file", node_name=safe_name)
+        file_sop.setParms({"file": file_path})
+        return True
+    # VDBs: use Volume LOP
+    if file_ext.lower().endswith(".vdb"):
+        create_new_node(network_node, file_path, "volume", "filepath", position, name=safe_name)
+        return True
+    # Default: asset reference
     create_new_node(network_node, file_path, "assetreference", "filepath", position, name=safe_name)
     return True
 
@@ -223,10 +264,10 @@ def import_file(network_node, file_path, file_stem, file_ext, cursor_position):
         network_node = network_node.parent()
         net_type = network_node.type().name()
 
-    logger.info("Importing '%s' into '%s' network", file_path, net_type)
+    logger.info(f"Importing '{file_path}' into '{net_type}' network")
 
-    # Handle scene loads
-    if file_ext == ".hip":
+    # Scene load
+    if file_ext.lower() == ".hip":
         hou.hipFile.load(file_path)
         return True
 
@@ -239,26 +280,20 @@ def import_file(network_node, file_path, file_stem, file_ext, cursor_position):
     # Dispatch by network type
     if net_type in ("geo", "sopnet"):
         return _import_geo(network_node, file_path, safe_name, file_ext, cursor_position)
-
     if net_type in ("mat", "matnet", "materialbuilder", "materiallibrary", "assignmaterial"):
         return _import_material(network_node, file_path, safe_name, file_ext, cursor_position)
-
     if net_type == "redshift_vopnet":
         return _import_redshift(network_node, file_path, safe_name, cursor_position)
-
     if net_type == "chopnet":
         return _import_chop(network_node, file_path, safe_name, cursor_position)
-
     if net_type in ("arnold_materialbuilder", "arnold_vopnet"):
         return _import_arnold(network_node, file_path, safe_name, cursor_position)
-
     if net_type in ("cop2net", "img"):
         return _import_cop2(network_node, file_path, safe_name, cursor_position)
-
     if net_type in ("lopnet", "stage"):
-        return _import_lop(network_node, file_path, safe_name, cursor_position)
+        return _import_lop(network_node, file_path, safe_name, file_ext, cursor_position)
 
-    logger.error("No handler for network type '%s' and extension '%s'", net_type, file_ext)
+    logger.error(f"No handler for network type '{net_type}' and extension '{file_ext}'")
     return False
 
 
@@ -276,23 +311,24 @@ def dropAccept(filepaths_list):
     if pane.type().name() != "NetworkEditor":
         return False
 
-    logger.info("Dropping %s into %s", filepaths_list, pane.type().name())
+    logger.info(f"Dropping {filepaths_list} into {pane.type().name()}")
 
     for idx, filepath in enumerate(filepaths_list):
         path = Path(filepath)
         stem = path.stem
         ext = get_full_extension(filepath)
         rel = rel_path(str(path))
+        rel = substitute_sequence_path(rel)
         pos = pane.cursorPosition() + hou.Vector2(idx * 3, 0)
 
         try:
             if not import_file(pane.pwd(), rel, stem, ext, pos):
                 return False
         except hou.Error as e:
-            logger.exception("Houdini error importing %s: %s", rel, e)
+            logger.exception(f"Houdini error importing {rel}: {e}")
             return False
         except Exception as e:
-            logger.exception("Unexpected error importing %s: %s", rel, e)
+            logger.exception(f"Unexpected error importing {rel}: {e}")
             return False
 
     return True
