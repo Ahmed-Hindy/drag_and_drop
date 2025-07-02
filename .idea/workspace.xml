@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
-    <list default="true" id="cc62a867-2521-43d9-8cbd-004c24f3ae92" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/drag_and_drop.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/externaldragdrop.py" afterDir="false" />
+    <list default="true" id="cc62a867-2521-43d9-8cbd-004c24f3ae92" name="Changes" comment="- add VERSION">
+      <change beforePath="$PROJECT_DIR$/.idea/drag_and_drop.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/drag_and_drop.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/externaldragdrop.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/externaldragdrop.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -15,11 +15,38 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 1
-}]]></component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Ahmed-Hindy&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Ahmed-Hindy/drag_and_drop.git&quot;,
+    &quot;accountId&quot;: &quot;6a14807b-36af-42cc-bdba-78b9197b9ed5&quot;
+  },
+  &quot;recentNewPullRequestHead&quot;: {
+    &quot;server&quot;: {
+      &quot;useHttp&quot;: false,
+      &quot;host&quot;: &quot;github.com&quot;,
+      &quot;port&quot;: null,
+      &quot;suffix&quot;: null
+    },
+    &quot;owner&quot;: &quot;Ahmed-Hindy&quot;,
+    &quot;repository&quot;: &quot;drag_and_drop&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
   <component name="ProjectId" id="2y9FAqpEUAWZkVb1IZRnNqs2KmR" />
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -32,13 +59,19 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "C:/Users/ahmed/Documents/dev/git_repos/drag_and_drop"
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "feature/fix-invalid-file-types",
+    "last_opened_file_path": "F:/Users/Ahmed Hindy/Documents/houdiniTools/drag_and_drop",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="F:\Users\Ahmed Hindy\Documents\houdiniTools\drag_and_drop" />
       <recent name="C:\Users\ahmed\Documents\dev\git_repos\drag_and_drop" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="F:\Users\Ahmed Hindy\Documents\houdiniTools\drag_and_drop\scripts" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -56,6 +89,31 @@
       <option name="presentableId" value="Default" />
       <updated>1749238741947</updated>
     </task>
+    <task id="LOCAL-00001" summary="- updated README.md">
+      <option name="closed" value="true" />
+      <created>1750109233320</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1750109233320</updated>
+    </task>
+    <task id="LOCAL-00002" summary="- updated README.md">
+      <option name="closed" value="true" />
+      <created>1750109381409</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1750109381409</updated>
+    </task>
+    <task id="LOCAL-00003" summary="- add VERSION">
+      <option name="closed" value="true" />
+      <created>1750109646941</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1750109646941</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -68,5 +126,10 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="- updated README.md" />
+    <MESSAGE value="- add VERSION" />
+    <option name="LAST_COMMIT_MESSAGE" value="- add VERSION" />
   </component>
 </project>
