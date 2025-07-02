@@ -6,23 +6,20 @@ import os
 import logging
 from pathlib import Path
 import re
-from typing import Optional
 
 import hou
-
-
 
 # --------------------------------------------------
 # Configuration and Supported File Extensions
 # --------------------------------------------------
 
 # Supported image extensions for material networks
-IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".exr", ".hdr", ".tga", ".pic", ".tx", ".tex", ".rat"}
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".exr", ".hdr", ".tga", ".pic", ".tx", ".tex", ".rat")
 # Supported USD extensions
-USD_EXTS = {".usd", ".usda", ".usdc"}
+USD_EXTS = (".usd", ".usda", ".usdc")
 
 # Mapping for geometry-based networks (geo/sopnet)
-GEO_HANDLERS: dict[str, tuple[str, str]] = {
+GEO_HANDLERS = {
     ".abc": ("alembic", "fileName"),
     ".rs": ("redshift_packedProxySOP", "RS_proxy_file"),
     ".bgeo.sc": ("file", "file"),
@@ -30,7 +27,7 @@ GEO_HANDLERS: dict[str, tuple[str, str]] = {
 }
 
 # Mapping for material networks, keyed by subnet type (mtlx/principled)
-MAT_HANDLERS: dict[str, dict[str, tuple[str, str]]] = {
+MAT_HANDLERS = {
     "mtlx": {ext: ("mtlximage", "file") for ext in IMAGE_EXTS},
     "principled": {ext: ("texture::2.0", "map") for ext in IMAGE_EXTS},
 }
@@ -46,15 +43,29 @@ if not logger.hasHandlers():
 # --------------------------------------------------
 # Utility Functions
 # --------------------------------------------------
+
 def get_full_extension(filename):
+    """
+    Get full extension (including multi-part) from filename.
+
+    Args:
+        filename: Name or path of the file.
+
+    Returns:
+        Combined suffixes as a single string (e.g., '.tar.gz').
+    """
     path = Path(filename)
-    # This handles multiple dots correctly
     return ''.join(path.suffixes)
 
-
-def rel_path(fullpath: str) -> str:
+def rel_path(fullpath):
     """
     Convert absolute path to relative $HIP path if applicable.
+
+    Args:
+        fullpath: Absolute filesystem path.
+
+    Returns:
+        A string with '$HIP/...' if under the HIP directory, else the original path.
     """
     hip = Path(hou.getenv("HIP", ""))
     path = Path(fullpath)
@@ -64,13 +75,18 @@ def rel_path(fullpath: str) -> str:
     except Exception:
         return fullpath
 
-
-def detect_subnet_type(network_node: hou.Node) -> str:
+def detect_subnet_type(network_node):
     """
     Detect material subnet type based on existing children or prompt user.
 
+    Args:
+        network_node: Houdini network node whose children indicate subnet type.
+
     Returns:
-        'mtlx' or 'principled'
+        A string, either 'mtlx' or 'principled'.
+
+    Raises:
+        RuntimeError: If no render engine is selected by the user.
     """
     child_types = [child.type().name() for child in network_node.children()]
     if any("mtlx" in t for t in child_types):
@@ -79,16 +95,25 @@ def detect_subnet_type(network_node: hou.Node) -> str:
         return "principled"
 
     choice = hou.ui.selectFromList(["mtlx", "principled"], exclusive=True,
-                                    title="Choose Render Engine", default_choices=[0])
+                                   title="Choose Render Engine", default_choices=[0])
     if not choice:
         raise RuntimeError("No render engine selected.")
     return ["mtlx", "principled"][choice[0]]
 
-
-def create_new_node( network_node: hou.Node, file_path: str, node_type: str, parm_name: str, position: hou.Vector2,
-                     name: Optional[str] = None) -> hou.Node:
+def create_new_node(network_node, file_path, node_type, parm_name, position, name=None):
     """
     Create a new Houdini node, set its file parameter, and position it.
+
+    Args:
+        network_node: The network in which to create the node.
+        file_path: The file path to assign to the node parameter.
+        node_type: The Houdini node type to create.
+        parm_name: The parameter name to set the file path.
+        position: Position vector for the new node.
+        name: Optional name for the new node.
+
+    Returns:
+        The created Houdini node.
     """
     if name:
         node = network_node.createNode(node_type, name)
@@ -102,33 +127,38 @@ def create_new_node( network_node: hou.Node, file_path: str, node_type: str, par
 # Main Import Logic
 # --------------------------------------------------
 
-def import_file(network_node: hou.Node, file_path: str, file_stem: str, file_ext: str, cursor_position: hou.Vector2) -> bool:
+def import_file(network_node, file_path, file_stem, file_ext, cursor_position):
     """
     Import a file into the given Houdini network based on file extension and network type.
+
+    Args:
+        network_node: The Houdini network node to import into.
+        file_path: The file path to import.
+        file_stem: The base filename without extension.
+        file_ext: The file extension (including dot).
+        cursor_position: Position vector for the new node.
+
+    Returns:
+        True if import succeeded, False otherwise.
     """
-    # Clean up name for new nodes
     safe_name = re.sub(r"\W+", "_", file_stem)
 
     net_type = network_node.type().name()
-    # Unwrap nested subnets
     while net_type == "subnet":
         network_node = network_node.parent()
         net_type = network_node.type().name()
 
     logger.info("Importing '%s' into network '%s'", file_path, net_type)
 
-    # Handle dropping a .hip file to load a scene
     if file_ext == ".hip":
         hou.hipFile.load(file_path)
         return True
 
-    # OBJ context: auto-create geo container
     if net_type == "obj":
         network_node = network_node.createNode("geo", f"GEO_{safe_name}")
         network_node.setPosition(cursor_position)
         net_type = "geo"
 
-    # Geometry-based networks
     if net_type in ("geo", "sopnet"):
         handler = GEO_HANDLERS.get(file_ext)
         if handler:
@@ -138,7 +168,6 @@ def import_file(network_node: hou.Node, file_path: str, file_stem: str, file_ext
         logger.warning("Unsupported geometry extension '%s'", file_ext)
         return False
 
-    # Material networks
     if net_type in ("mat", "matnet", "materialbuilder", "materiallibrary", "assignmaterial"):
         subnet = detect_subnet_type(network_node)
         handlers = MAT_HANDLERS.get(subnet, {})
@@ -150,7 +179,6 @@ def import_file(network_node: hou.Node, file_path: str, file_stem: str, file_ext
         logger.warning("Unsupported material extension '%s' for subnet '%s'", file_ext, subnet)
         return False
 
-    # Other specialized networks
     if net_type == "redshift_vopnet":
         create_new_node(network_node, file_path, "redshift::TextureSampler", "tex0", cursor_position, name=safe_name)
         return True
@@ -174,10 +202,15 @@ def import_file(network_node: hou.Node, file_path: str, file_stem: str, file_ext
     logger.error("No handler for network type '%s' and extension '%s'", net_type, file_ext)
     return False
 
-
 def dropAccept(filepaths_list):
     """
     Main entrypoint for external drag-and-drop. Only accepts drops into NetworkEditor panes.
+
+    Args:
+        filepaths_list: List of file paths being dropped.
+
+    Returns:
+        True if all files imported successfully, False otherwise.
     """
     pane = hou.ui.paneTabUnderCursor()
     if pane.type().name() != "NetworkEditor":
